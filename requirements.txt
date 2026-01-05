@@ -5,3 +5,4 @@ requests==2.32.3
 python-telegram-bot==21.4
 pytz==2024.1
 beautifulsoup4==4.12.3
+ephem
