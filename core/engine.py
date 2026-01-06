@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 from utils.Tarot.tarot_advice import TarotAdvice
 from handlers.romeo import romeo_keywords, reply_to_romeo_question
 from handlers.shine import shine_keywords, gadalka_keywords, reply_to_shine_question
-from handlers.lunar_day import lunar_day_command
+from handlers.lunar_day import get_lunar_day_text
 from utils.horoscope import get_horoscope_from_website
 
 # This one is Telegram-shaped (Update/Context), so we call it through fakes
@@ -79,86 +79,90 @@ class _FakeContext:
         self.bot = _FakeBot(out)
 
 
-async def build_reply_actions(*, text: str, user_id: int, chat_id: int) -> List[OutAction]:
+async def build_reply_actions(text: str, user_id: int, chat_id: int) -> list[OutAction]:
+    """Единая логика ответов (VK + Telegram).
+
+    На вход получаем только текст и идентификаторы, на выход — список действий:
+    OutText / OutPhoto.
     """
-    Platform-neutral entrypoint.
-    Returns a list of actions: text / sticker / photo.
-    """
-    t = (text or "").strip()
-    if not t:
-        return []
+    low = (text or "").lower().strip()
+    out: list[OutAction] = []
 
-    low = t.lower()
-    out: List[OutAction] = []
-
-    # /start (Telegram command) or "start" alike
-    if low in ("/start", "start"):
-        out.append(OutText(text="Привет! Я бот. Напиши сообщение — я отвечу 🙂"))
-        return out
-
-    # Tarot
-    if "таро" in low:
-        advice = _tarot.get_daily_advice(user_id)
+    # --- КАРТА ДНЯ / ТАРО ---
+    tarot_triggers = ["карта дня", "карту дня", "карте дня", "совет", "таро"]
+    if any(k in low for k in tarot_triggers):
+        advice = tarot_advice.get_daily_advice(user_id)
         if isinstance(advice, dict):
-            out.append(OutPhoto(path=advice["image"], caption=advice["description"]))
+            out.append(OutPhoto(path=advice["image"], caption=""))
+            out.append(OutText(text=advice["description"]))
         else:
             out.append(OutText(text=str(advice)))
         return out
 
-    # Romeo
-    if any(k in low for k in romeo_keywords):
-        out.append(OutText(text=reply_to_romeo_question()))
+    # --- ЛУННЫЙ КАЛЕНДАРЬ ---
+    if any(k in low for k in ["лунный день", "лунные сутки", "луна"]):
+        out.append(OutText(text=get_lunar_day_text()))
         return out
 
-    # Shine / gadalka
-    if any(k in low for k in shine_keywords) or any(k in low for k in gadalka_keywords):
-        out.append(OutText(text=reply_to_shine_question()))
-        return out
-
-    # Lunar day (your handler returns text)
-    if "лун" in low and ("день" in low or "календар" in low):
-        out.append(OutText(text=lunar_day_command()))
-        return out
-
-    # Horoscope: very simple parse like in your Telegram bot
+    # --- ГОРОСКОП ---
     if "гороскоп" in low:
-        # try to detect zodiac sign in text
+        sign = low.split("гороскоп", 1)[1].strip()
+
         zodiac_signs = {
-            "овен": ["овен", "овна", "овну", "овном"],
-            "телец": ["телец", "тельца", "тельцу", "тельцом"],
-            "близнецы": ["близнец", "близнецы", "близнецам", "близнецов"],
-            "рак": ["рак", "рака", "раку", "раком"],
-            "лев": ["лев", "льва", "льву", "львом"],
-            "дева": ["дева", "девы", "деве", "девой", "девою"],
-            "весы": ["весы", "весам", "весов"],
-            "скорпион": ["скорпион", "скорпиона", "скорпиону", "скорпионом"],
-            "стрелец": ["стрелец", "стрельца", "стрельцу", "стрельцом"],
-            "козерог": ["козерог", "козерога", "козерогу", "козерогом"],
-            "водолей": ["водолей", "водолея", "водолею", "водолеем"],
-            "рыбы": ["рыбы", "рыбам", "рыб"],
+            "овен": ["овен", "овна", "овну", "овнов", "овнам"],
+            "телец": ["телец", "тельца", "тельцу", "тельцов", "тельцам"],
+            "близнецы": ["близнецы", "близнеца", "близнецу", "близнецов", "близнецам"],
+            "рак": ["рак", "рака", "раку", "раков", "ракам"],
+            "лев": ["лев", "льва", "льву", "львов", "львам"],
+            "дева": ["дева", "девы", "деве", "девам", "дев"],
+            "весы": ["весы", "весов", "весам"],
+            "скорпион": ["скорпион", "скорпиона", "скорпиону", "скорпионам"],
+            "стрелец": ["стрелец", "стрельца", "стрельцу", "стрельцам"],
+            "козерог": ["козерог", "козерога", "козерогу", "козерогам"],
+            "водолей": ["водолей", "водолея", "водолею", "водолеям"],
+            "рыбы": ["рыбы", "рыбе", "рыбам", "рыб"],
         }
-        found = None
+
+        found_sign = None
         for zodiac, forms in zodiac_signs.items():
-            if any(f in low for f in forms):
-                found = zodiac
+            if any(form in sign for form in forms):
+                found_sign = zodiac
                 break
-        if found:
-            out.append(OutText(text=get_horoscope_from_website(found)))
+
+        if found_sign:
+            out.append(OutText(text=get_horoscope_from_website(found_sign)))
         else:
-            out.append(OutText(text="Хочешь гороскоп? Напиши: Гороскоп для ... Кого? \nЯ ж вас всех не упомню 😁"))
+            out.append(OutText(text="Хочешь гороскоп? Напиши: Гороскоп для ... Кого?
+Я ж вас всех не упомню 😁"))
         return out
 
-    # Fallback: your big keyword responder (Telegram-shaped) via fakes
-    fake_update = _FakeUpdate(text=t, chat_id=chat_id)
-    fake_context = _FakeContext(out=out)
-    await tg_style_reply_to_message(fake_update, fake_context)
-    # It may have added to update.message.out too, merge:
-    out.extend(fake_update.message.out)
+    # --- РОМЕО ---
+    if any(k in low for k in romeo_keywords):
+        question = low
+        if "ромео" in low:
+            question = low.split("ромео", 1)[1].strip()
+        out.append(OutText(text=reply_to_romeo_question(question)))
+        return out
 
-    # Deduplicate: keep order, remove empty texts
-    cleaned: List[OutAction] = []
-    for a in out:
-        if isinstance(a, OutText) and not a.text:
-            continue
-        cleaned.append(a)
-    return cleaned
+    # --- SHINE / ГАДАЛКА ---
+    if any(k in low for k in (shine_keywords + gadalka_keywords)):
+        if any(k in low for k in shine_keywords):
+            question = low
+            if "шайн" in low:
+                question = low.split("шайн", 1)[1].strip()
+            out.append(OutText(text=reply_to_shine_question(question)))
+            return out
+        if any(k in low for k in gadalka_keywords):
+            out.append(OutText(text="Гадай - не гадай... одна фигня получится 😅"))
+            return out
+
+    # --- ФОЛБЭК (старый TG-стиль message_handler) ---
+    # Он может генерировать любые OutText/OutPhoto через FakeUpdate.
+    try:
+        more = await tg_style_reply_to_message(text=text, user_id=user_id, chat_id=chat_id)
+        out.extend(more)
+    except Exception:
+        logger.exception("Fallback handler failed")
+        out.append(OutText(text="Что-то пошло не так 😅 Попробуй ещё раз."))
+
+    return out
