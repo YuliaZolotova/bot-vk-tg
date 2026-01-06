@@ -13,4 +13,3 @@ def send_actions_vk(peer_id, actions):
                 "v": "5.199",
             }
         )
-
