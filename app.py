@@ -52,3 +52,4 @@ async def tg_webhook(secret: str, req: Request):
         send_actions_tg(chat_id, actions)
 
     return {"ok": True}
+
