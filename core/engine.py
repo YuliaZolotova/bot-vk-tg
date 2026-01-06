@@ -132,8 +132,7 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int) -> list[Out
         if found_sign:
             out.append(OutText(text=get_horoscope_from_website(found_sign)))
         else:
-            out.append(OutText(text="Хочешь гороскоп? Напиши: Гороскоп для ... Кого?
-Я ж вас всех не упомню 😁"))
+            out.append(OutText(text="Хочешь гороскоп? Напиши: Гороскоп для ... Кого?\nЯ ж вас всех не упомню 😁"))
         return out
 
     # --- РОМЕО ---
