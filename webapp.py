@@ -1,13 +1,16 @@
-from __future__ import annotations
-
 import os
 from fastapi import FastAPI, Request, Response
+
 from core.engine import build_reply_actions
 from adapters.vk_sender import send_actions_vk
 from adapters.tg_sender import send_actions_tg
-from config import VK_CONFIRMATION, VK_SECRET, TG_WEBHOOK_SECRET
 
 app = FastAPI()
+
+VK_CONFIRMATION = os.getenv("VK_CONFIRMATION", "")
+VK_SECRET = os.getenv("VK_SECRET", "")
+TG_WEBHOOK_SECRET = os.getenv("TG_WEBHOOK_SECRET", "")
+
 
 @app.get("/")
 def health():
@@ -25,7 +28,8 @@ async def vk_callback(req: Request):
     t = data.get("type")
 
     if t == "confirmation":
-        return Response(VK_CONFIRMATION)
+            return Response(content=VK_CONFIRMATION, media_type="text/plain")
+
 
     if t == "message_new":
         msg = data.get("object", {}).get("message", {})
@@ -37,9 +41,9 @@ async def vk_callback(req: Request):
         if peer_id and actions:
             send_actions_vk(int(peer_id), actions)
 
-        return Response("ok")
+        return Response (content="ok", media_type="text/plain")
 
-    return Response("ok")
+    return Response (content="ok", media_type="text/plain")
 
 
 @app.post("/tg/{secret}")
