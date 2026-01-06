@@ -1,5 +1,4 @@
-import logging
-logger = logging.getLogger(__name__)
+logger.exception("Fallback handler failed")
 
 from __future__ import annotations
 
