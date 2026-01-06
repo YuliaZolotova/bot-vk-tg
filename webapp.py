@@ -1,16 +1,13 @@
-import os
-from fastapi import FastAPI, Request, Response
+from __future__ import annotations
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from core.engine import build_reply_actions
 from adapters.vk_sender import send_actions_vk
 from adapters.tg_sender import send_actions_tg
+from config import VK_CONFIRMATION, VK_SECRET, TG_WEBHOOK_SECRET
 
 app = FastAPI()
-
-VK_CONFIRMATION = os.getenv("VK_CONFIRMATION", "")
-VK_SECRET = os.getenv("VK_SECRET", "")
-TG_WEBHOOK_SECRET = os.getenv("TG_WEBHOOK_SECRET", "")
-
 
 @app.get("/")
 def health():
@@ -20,16 +17,13 @@ def health():
 async def vk_callback(req: Request):
     data = await req.json()
 
-    # Optional secret check (recommended)
-    if VK_SECRET:
-        if data.get("secret") != VK_SECRET:
-            return Response("forbidden", status_code=403)
+    if VK_SECRET and data.get("secret") != VK_SECRET:
+        return PlainTextResponse("forbidden", status_code=403)
 
     t = data.get("type")
 
     if t == "confirmation":
-            return Response(content=VK_CONFIRMATION, media_type="text/plain")
-
+        return PlainTextResponse(VK_CONFIRMATION)
 
     if t == "message_new":
         msg = data.get("object", {}).get("message", {})
@@ -40,30 +34,26 @@ async def vk_callback(req: Request):
         actions = await build_reply_actions(text=text, user_id=int(from_id or 0), chat_id=int(peer_id or 0))
         if peer_id and actions:
             send_actions_vk(int(peer_id), actions)
+        return PlainTextResponse("ok")
 
-        return Response (content="ok", media_type="text/plain")
-
-    return Response (content="ok", media_type="text/plain")
-
+    return PlainTextResponse("ok")
 
 @app.post("/tg/{secret}")
 async def tg_webhook(secret: str, req: Request):
     if TG_WEBHOOK_SECRET and secret != TG_WEBHOOK_SECRET:
-        return Response("forbidden", status_code=403)
+        return PlainTextResponse("forbidden", status_code=403)
 
     data = await req.json()
     message = data.get("message") or data.get("edited_message")
     if not message:
-        return {"ok": True}
+        return JSONResponse({"ok": True})
 
-    chat = message.get("chat") or {}
-    chat_id = chat.get("id")
-    from_user = message.get("from") or {}
-    user_id = from_user.get("id", 0)
-    text = message.get("text", "")
+    chat_id = (message.get("chat") or {}).get("id")
+    user_id = (message.get("from") or {}).get("id", 0)
+    text = message.get("text", "") or ""
 
     actions = await build_reply_actions(text=text, user_id=int(user_id or 0), chat_id=int(chat_id or 0))
     if chat_id and actions:
         send_actions_tg(int(chat_id), actions)
 
-    return {"ok": True}
+    return JSONResponse({"ok": True})

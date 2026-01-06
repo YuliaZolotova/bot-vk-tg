@@ -1,48 +1,57 @@
-
+from __future__ import annotations
 import os
-import random
-from datetime import datetime
+from datetime import date
+from typing import Dict, List, Tuple, Any
 
 class TarotAdvice:
-    def __init__(self):  # Исправлено на '__init__'
-        self.user_requests = {}
-        self.image_folder = "utils/Tarot/images/"  # Папка с изображениями
-        self.advice_data = self.load_advice_data("utils/Tarot/advice.txt")
+    """Карта дня: одна карта в день на пользователя.
+    Возвращает dict: {"image": <path>, "description": <text>} или str (если уже было сегодня).
+    """
 
-    def load_advice_data(self, file_path):
-        advice_list = []
-        with open(file_path, 'r', encoding='utf-8') as file:
-            for line in file:
-                if line.strip():  # Проверка на пустую строку
-                    image, description = line.strip().split('|')
-                    advice_list.append({
-                        "image": os.path.join(self.image_folder, image),
-                        "description": description
-                    })
-        return advice_list
+    def __init__(self):
+        base_dir = os.path.dirname(__file__)
+        self.advice_file = os.path.join(base_dir, "advice.txt")
+        self.image_folder = os.path.join(base_dir, "images")
+        self._advice_data: List[Tuple[str, str]] = self._load_advice()
+        self._daily_cache: Dict[tuple[int, str], int] = {}
+        self._already_sent: set[tuple[int, str]] = set()
 
-    def get_daily_advice(self, user_id):
-        today = datetime.now().date()
+    def _load_advice(self) -> List[Tuple[str, str]]:
+        data: List[Tuple[str, str]] = []
+        if not os.path.exists(self.advice_file):
+            return data
+        with open(self.advice_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or ":" not in line:
+                    continue
+                card, advice = line.split(":", 1)
+                data.append((card.strip(), advice.strip().replace("\\n", "\n")))
+        return data
 
-        if user_id in self.user_requests:
-            last_request = self.user_requests[user_id]
-            if last_request == today:
-                return "Вы уже запрашивали карту сегодня. Пожалуйста, попробуйте снова завтра."  # Сообщение, если запрос уже сделан
+    def _card_index_for_today(self, user_id: int) -> int:
+        if not self._advice_data:
+            return -1
+        key = (int(user_id), date.today().isoformat())
+        if key in self._daily_cache:
+            return self._daily_cache[key]
+        # стабильный выбор на день
+        idx = hash(f"{user_id}:{key[1]}") % len(self._advice_data)
+        self._daily_cache[key] = idx
+        return idx
 
-        # Выбор случайной карты
-        advice = random.choice(self.advice_data)
-        self.user_requests[user_id] = today  # Сохраняем дату запроса
+    def get_daily_advice(self, user_id: int) -> Any:
+        idx = self._card_index_for_today(user_id)
+        if idx < 0:
+            return "Файл с советами Таро не найден."
 
-        return advice  # Возвращать словарь совета
+        key = (int(user_id), date.today().isoformat())
+        if key in self._already_sent:
+            return "Эй, Бро! Я сегодня уже давал совет... Давай завтра 😁"
+        self._already_sent.add(key)
 
-# Пример использования
-tarot_advice = TarotAdvice()
-
-user_id = 12345  # Пример ID пользователя
-advice = tarot_advice.get_daily_advice(user_id)
-
-if isinstance(advice, dict):  # Убедимся, что advice — это словарь
-    print(f"Изображение: {advice['image']}, Совет: {advice['description']}")
-else:
-    print(advice)  # Если это сообщение о том, что запрос уже сделан
-
+        _card_name, description = self._advice_data[idx]
+        image_path = os.path.join(self.image_folder, f"image{idx+1}.jpg")
+        if not os.path.exists(image_path):
+            return {"image": "", "description": description}
+        return {"image": image_path, "description": description}

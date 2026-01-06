@@ -1,69 +1,48 @@
 from __future__ import annotations
-
 import os
-import time
 import requests
-from typing import Optional
-
-from core.engine import OutAction, OutText, OutSticker, OutPhoto
+from core.types import Action, OutText, OutPhoto
 from config import VK_TOKEN
 
+_VK_API = "https://api.vk.com/method/{method}"
+_VK_VER = "5.199"
 
-VK_API_VERSION = "5.131"
+def _vk(method: str, params: dict):
+    if not VK_TOKEN:
+        raise RuntimeError("VK_TOKEN is not set")
+    p = dict(params)
+    p.update({"access_token": VK_TOKEN, "v": _VK_VER})
+    r = requests.post(_VK_API.format(method=method), data=p, timeout=30)
+    data = r.json()
+    if "error" in data:
+        raise RuntimeError(f"VK API error: {data['error']}")
+    return data["response"]
 
-
-def _vk(method: str, data: dict):
-    payload = {"access_token": VK_TOKEN, "v": VK_API_VERSION, **data}
-    r = requests.post(f"https://api.vk.com/method/{method}", data=payload, timeout=15)
-    return r.json()
-
-
-def _upload_photo(peer_id: int, photo_path: str) -> Optional[str]:
-    """Upload a local photo and return attachment string like 'photo{owner_id}_{id}'."""
-    server_resp = _vk("photos.getMessagesUploadServer", {"peer_id": peer_id})
-    upload_url = server_resp.get("response", {}).get("upload_url")
-    if not upload_url:
+def _upload_message_photo(peer_id: int, path: str) -> str | None:
+    if not os.path.exists(path):
         return None
+    server = _vk("photos.getMessagesUploadServer", {"peer_id": peer_id})
+    upload_url = server["upload_url"]
 
-    with open(photo_path, "rb") as f:
-        up = requests.post(upload_url, files={"photo": f}, timeout=30).json()
+    with open(path, "rb") as f:
+        up = requests.post(upload_url, files={"photo": f}, timeout=60).json()
 
-    save_resp = _vk(
-        "photos.saveMessagesPhoto",
-        {
-            "photo": up.get("photo"),
-            "server": up.get("server"),
-            "hash": up.get("hash"),
-        },
-    )
-    items = save_resp.get("response") or []
-    if not items:
-        return None
+    saved = _vk("photos.saveMessagesPhoto", {"photo": up["photo"], "server": up["server"], "hash": up["hash"]})
+    photo = saved[0]
+    owner_id = photo["owner_id"]
+    photo_id = photo["id"]
+    access_key = photo.get("access_key")
+    if access_key:
+        return f"photo{owner_id}_{photo_id}_{access_key}"
+    return f"photo{owner_id}_{photo_id}"
 
-    ph = items[0]
-    return f"photo{ph['owner_id']}_{ph['id']}"
-
-
-def send_actions_vk(peer_id: int, actions: list[OutAction]):
+def send_actions_vk(peer_id: int, actions: list[Action]) -> None:
     for a in actions:
         if isinstance(a, OutText):
-            _vk("messages.send", {"peer_id": peer_id, "message": a.text, "random_id": int(time.time() * 1000)})
+            _vk("messages.send", {"peer_id": peer_id, "random_id": 0, "message": a.text})
         elif isinstance(a, OutPhoto):
-            attachment = _upload_photo(peer_id, a.path)
-            if attachment:
-                _vk(
-                    "messages.send",
-                    {
-                        "peer_id": peer_id,
-                        "message": a.caption or "",
-                        "attachment": attachment,
-                        "random_id": int(time.time() * 1000),
-                    },
-                )
-            else:
-                # fallback to caption text only
-                if a.caption:
-                    _vk("messages.send", {"peer_id": peer_id, "message": a.caption, "random_id": int(time.time() * 1000)})
-        elif isinstance(a, OutSticker):
-            # VK can't send Telegram sticker ids -> send a small note instead
-            _vk("messages.send", {"peer_id": peer_id, "message": "🙂", "random_id": int(time.time() * 1000)})
+            attach = _upload_message_photo(peer_id, a.path)
+            params = {"peer_id": peer_id, "random_id": 0, "message": a.caption or ""}
+            if attach:
+                params["attachment"] = attach
+            _vk("messages.send", params)

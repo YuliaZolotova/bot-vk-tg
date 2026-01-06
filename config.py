@@ -1,14 +1,13 @@
 import os
 
-def env(name: str, default: str = "") -> str:
-    value = os.getenv(name, default)
-    return value if value is not None else default
+# VK
+VK_TOKEN = os.getenv("VK_TOKEN", "")
+VK_SECRET = os.getenv("VK_SECRET", "")          # must match "Секретный ключ" in VK Callback settings
+VK_CONFIRMATION = os.getenv("VK_CONFIRMATION", "")
 
 # Telegram
-TG_TOKEN = env("TG_TOKEN")
-TG_WEBHOOK_SECRET = env("TG_WEBHOOK_SECRET")  # put a random string, used in /tg/<secret>
+TG_TOKEN = os.getenv("TG_TOKEN", "")
+TG_WEBHOOK_SECRET = os.getenv("TG_WEBHOOK_SECRET", "")  # used in URL /tg/<secret>
 
-# VK
-VK_TOKEN = env("VK_TOKEN")
-VK_CONFIRMATION = env("VK_CONFIRMATION")      # from VK Callback "confirmation string"
-VK_SECRET = env("VK_SECRET")                  # set in VK Callback settings and in Render env
+# Misc
+TZ = os.getenv("TZ", "Europe/Moscow")
