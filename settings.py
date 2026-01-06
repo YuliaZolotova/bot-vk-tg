@@ -6,3 +6,7 @@ VK_CONFIRMATION = os.getenv("VK_CONFIRMATION", "")
 
 TG_TOKEN = os.getenv("TG_TOKEN", "")
 TG_WEBHOOK_SECRET = os.getenv("TG_WEBHOOK_SECRET", "")
+
+# --- typing imitation ---
+TYPING_DELAY_MIN = 3
+TYPING_DELAY_MAX = 6
