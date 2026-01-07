@@ -78,7 +78,8 @@ def _pick_random_card(available: list[str]) -> str:
     return random.choice(available)
 
 
-def get_tarot_day_actions(text: str, user_id: int, source: str = ""):
+def get_tarot_day_reply(text: str, user_id: int, source: str = ""):
+    ...
     """Карта дня:
     - По триггеру выбирает случайную карту (картинка + описание).
     - Одному пользователю — только 1 раз в сутки.
@@ -124,7 +125,4 @@ def get_tarot_day_actions(text: str, user_id: int, source: str = ""):
         return [OutPhoto(path=img_path, caption=""), OutText(desc)]
     return [OutPhoto(path=img_path, caption=""), OutText("Описание для этой карты не найдено.")]
 
-def get_tarot_day_reply(text: str, user_id: int, chat_id: int = 0, source: str = ""):
-    # chat_id не нужен для карты дня, но engine может передавать — поэтому оставляем параметр
-    return get_tarot_day_actions(text=text, user_id=user_id, source=source)
 
