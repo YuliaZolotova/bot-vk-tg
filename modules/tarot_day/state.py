@@ -42,7 +42,7 @@ def _save_raw(data: dict[str, Any]) -> None:
 
 
 def _user_key(user_id: int, source: str) -> str:
-    source = (source or "").strip().lower() or "unknown"
+    source = str(source or "").strip().lower() or "unknown"
     return f"{source}:{int(user_id)}"
 
 
