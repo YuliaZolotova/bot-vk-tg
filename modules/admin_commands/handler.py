@@ -7,20 +7,32 @@ from adapters.tg_sender import send_actions_tg
 from adapters.vk_sender import send_actions_vk
 
 
+def _parse_admin_ids(raw: str) -> set[int]:
+    raw = (raw or "").strip()
+    if not raw:
+        return set()
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    out = set()
+    for p in parts:
+        try:
+            out.add(int(p))
+        except ValueError:
+            pass
+    return out
+
+
+# ✅ ВАЖНО: эти строки должны быть ПОСЛЕ функции
 ADMIN_TG = _parse_admin_ids(ADMIN_TG_IDS)
 ADMIN_VK = _parse_admin_ids(ADMIN_VK_IDS)
 
 
-
 def _is_admin(platform: str, from_id: int) -> bool:
-    admin_tg = _parse_admin_ids(ADMIN_TG_IDS)
-    admin_vk = _parse_admin_ids(ADMIN_VK_IDS)
-
     if platform == "tg":
-        return from_id in admin_tg
+        return from_id in ADMIN_TG
     if platform == "vk":
-        return from_id in admin_vk
+        return from_id in ADMIN_VK
     return False
+
 
 
 def _send_to_targets(targets: list[tuple[str, int]], text: str) -> tuple[int, int]:
