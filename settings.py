@@ -31,3 +31,7 @@ IDLE_MESSAGES = [
     "Проверка связи: раз, два, три 🎤",
     "Тишина уровня «космос» 🌌",
 ]
+
+ADMIN_TG_IDS = os.getenv("ADMIN_TG_IDS", "")  # например "123,456"
+ADMIN_VK_IDS = os.getenv("ADMIN_VK_IDS", "")  # например "111,222"
+
