@@ -38,7 +38,7 @@ async def vk_callback(req: Request):
         if peer_id:
             touch("vk", int(peer_id))
 
-        actions = await build_reply_actions(text, int(from_id), int(peer_id))
+        actions = await build_reply_actions(text, int(from_id), int(peer_id), source="vk")
         if peer_id and actions:
             send_actions_vk(peer_id, actions)
 
@@ -60,7 +60,7 @@ async def tg_webhook(secret: str, req: Request):
     user_id = message["from"]["id"]
     text = message.get("text", "")
 
-    actions = await build_reply_actions(text, user_id, chat_id)
+    actions = await build_reply_actions(text, user_id, chat_id, source="tg")
     if actions:
         send_actions_tg(chat_id, actions)
 
