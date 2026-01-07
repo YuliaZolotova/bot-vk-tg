@@ -7,18 +7,9 @@ from adapters.tg_sender import send_actions_tg
 from adapters.vk_sender import send_actions_vk
 
 
-def _parse_admin_ids(raw: str) -> set[int]:
-    raw = (raw or "").strip()
-    if not raw:
-        return set()
-    parts = [p.strip() for p in raw.split(",") if p.strip()]
-    out = set()
-    for p in parts:
-        try:
-            out.add(int(p))
-        except ValueError:
-            pass
-    return out
+ADMIN_TG = _parse_admin_ids(ADMIN_TG_IDS)
+ADMIN_VK = _parse_admin_ids(ADMIN_VK_IDS)
+
 
 
 def _is_admin(platform: str, from_id: int) -> bool:
@@ -91,15 +82,15 @@ def handle_admin_command(platform: str, from_id: int, text: str):
     if t == "/help":
         return OutText(
             "📌 Админ-команды:\n"
-            "/all <текст> — всем чатам (лички + группы)\n"
-            "/all_groups <текст> — только группы/беседы\n"
-            "/tg <текст> — только Telegram\n"
-            "/vk <текст> — только VK\n"
+            "/all текст — всем чатам (лички + группы)\n"
+            "/all_groups текст — только группы/беседы\n"
+            "/tg текст — только Telegram\n"
+            "/vk текст — только VK\n"
             "\n"
-            "/tg_<chat_id> <текст> — в конкретный TG чат\n"
-            "/vk_<peer_id> <текст> — в конкретный VK чат\n"
-            "/tg_user_<user_id> <текст> — пользователю TG\n"
-            "/vk_user_<user_id> <текст> — пользователю VK\n"
+            "/tg_00000 текст — в конкретный TG чат\n"
+            "/vk_00000 текст — в конкретный VK чат\n"
+            "/tg_user_00000 текст — пользователю TG\n"
+            "/vk_user_00000 текст — пользователю VK\n"
             "\n"
             "Примеры:\n"
             "/all_groups Всем привет!\n"

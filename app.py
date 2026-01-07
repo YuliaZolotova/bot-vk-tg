@@ -1,5 +1,7 @@
+
 import asyncio
-from core.idle_notifier import idle_loop, touch
+from core.idle_notifier import idle_loop, touch, init_known_chats
+
 from fastapi import FastAPI, Request, Response
 from core.engine import build_reply_actions
 from adapters.vk_sender import send_actions_vk
@@ -11,7 +13,9 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def startup_event():
+    await init_known_chats()
     asyncio.create_task(idle_loop())
+
 
 
 @app.get("/")

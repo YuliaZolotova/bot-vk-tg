@@ -8,6 +8,9 @@ from settings import IDLE_TIMEOUT_SECONDS, IDLE_CHECK_EVERY_SECONDS, IDLE_MESSAG
 from core.actions import OutText
 from adapters.vk_sender import send_actions_vk
 from adapters.tg_sender import send_actions_tg
+import asyncio
+from core.chat_store_pg import init_pg, upsert_chat, load_chats
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,12 @@ _last_activity: Dict[Tuple[str, int], float] = {}
 def touch(platform: str, chat_id: int) -> None:
     """Вызывай при каждом входящем сообщении, чтобы помнить 'последнюю активность' чата."""
     _last_activity[(platform, int(chat_id))] = time.time()
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(asyncio.to_thread(upsert_chat, platform, int(chat_id)))
+    except RuntimeError:
+        pass
+
 
 
 async def _send_idle_message(platform: str, chat_id: int) -> None:
@@ -77,4 +86,11 @@ def get_group_chats(platform: str | None = None):
             if chat_id >= 2_000_000_000:
                 result.append((plat, chat_id))
     return result
+
+async def init_known_chats():
+    # создать таблицу + загрузить чаты
+    await asyncio.to_thread(init_pg)
+    data = await asyncio.to_thread(load_chats)
+    _last_activity.update(data)
+
 
