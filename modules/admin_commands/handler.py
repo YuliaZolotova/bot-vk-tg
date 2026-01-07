@@ -1,3 +1,5 @@
+import random
+
 from core.actions import OutText
 from core.idle_notifier import get_known_chats, get_group_chats
 from settings import ADMIN_TG_IDS, ADMIN_VK_IDS
@@ -46,6 +48,15 @@ def _send_to_targets(targets: list[tuple[str, int]], text: str) -> tuple[int, in
     return sent_vk, sent_tg
 
 
+NON_ADMIN_COMMAND_REPLIES = [
+    "😄 Ахах! Хитрый ход, но нет — командовать собой я не дам.",
+    "😏 Неплохая попытка, но эти команды только для админа.",
+    "🤖 Я бы и рад послушаться… но полномочий у тебя маловато.",
+    "😈 Ты думаешь, это так работает? Спойлер: нет.",
+    "🙃 Команда красивая, но доступ запрещён.",
+]
+
+
 def handle_admin_command(platform: str, from_id: int, text: str):
     """
     Админ-команды:
@@ -67,6 +78,10 @@ def handle_admin_command(platform: str, from_id: int, text: str):
         return None
 
     t = text.strip()
+
+    # если это команда, но пользователь не админ — шутливый отказ
+    if t.startswith("/") and not _is_admin(platform, from_id):
+        return OutText(random.choice(NON_ADMIN_COMMAND_REPLIES))
 
     # только админ
     if not _is_admin(platform, from_id):
