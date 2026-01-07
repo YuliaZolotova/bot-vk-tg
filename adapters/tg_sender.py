@@ -1,5 +1,14 @@
-from core.actions import OutText, OutPhoto
+import random
+import time
 import requests
+
+from core.actions import OutText, OutPhoto
+from settings import TG_TOKEN, TYPING_DELAY_MIN, TYPING_DELAY_MAX
+
+
+def _typing_delay():
+    time.sleep(random.uniform(TYPING_DELAY_MIN, TYPING_DELAY_MAX))
+
 
 def send_actions_tg(chat_id: int, actions):
     if not actions:
