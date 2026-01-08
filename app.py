@@ -2,13 +2,23 @@ from fastapi import FastAPI, Request, Response
 from core.engine import build_reply_actions
 from adapters.vk_sender import send_actions_vk
 from adapters.tg_sender import send_actions_tg
+from core.idle_notifier import touch, init_known_chats
 from settings import VK_CONFIRMATION, VK_SECRET, TG_WEBHOOK_SECRET
 
+
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    # Загружаем сохранённые чаты (Render Postgres), чтобы рассылка помнила их после деплоя
+    await init_known_chats()
+
 
 @app.get("/")
 def health():
     return {"ok": True}
+
 
 @app.post("/vk")
 async def vk_callback(req: Request):
@@ -27,11 +37,16 @@ async def vk_callback(req: Request):
         peer_id = msg.get("peer_id")
         from_id = msg.get("from_id", 0)
 
+        if peer_id:
+            # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
+            touch("vk", int(peer_id))
+
         actions = await build_reply_actions(text, int(from_id), int(peer_id), source="vk")
         if peer_id and actions:
             send_actions_vk(peer_id, actions)
 
     return Response("ok")
+
 
 @app.post("/tg/{secret}")
 async def tg_webhook(secret: str, req: Request):
@@ -44,6 +59,10 @@ async def tg_webhook(secret: str, req: Request):
         return {"ok": True}
 
     chat_id = message["chat"]["id"]
+
+    # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
+    touch("tg", int(chat_id))
+
     user_id = message["from"]["id"]
     text = message.get("text", "")
 

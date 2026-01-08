@@ -37,3 +37,4 @@ def send_actions_tg(chat_id: int, actions):
                 json={"chat_id": chat_id, "text": action.text},
                 timeout=10,
             )
+
