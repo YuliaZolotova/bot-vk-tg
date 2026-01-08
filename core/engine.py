@@ -9,12 +9,12 @@ from settings import ANGEL_TIME_TZ
 
 async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str = "unknown"):
 
-    # Проверка админа
+    # 1️⃣ Проверка админа
     admin_action = handle_admin_command(source, user_id, text)
     if admin_action:
         return [admin_action]
 
-    # 🪽 Ангельское время
+    # 2️⃣ Ангельское время
     actions = get_angel_time_reply(
         text=text,
         platform=source,   # "tg" или "vk"
@@ -26,11 +26,11 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str
         return actions
 
 
-    # 1️⃣ Карта дня
+    # 3️⃣ Карта дня
     actions = get_tarot_day_reply(text, user_id, source=source)
     if actions:
         return actions
 
-    # 2️⃣ Простые ответы
+    # 4️⃣ Простые ответы
     actions = await get_simple_reply(text, user_id, chat_id)
     return actions
