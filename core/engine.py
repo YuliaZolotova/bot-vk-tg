@@ -8,6 +8,9 @@ from settings import ANGEL_TIME_TZ
 from modules.lunar_day.handler import get_lunar_day_reply
 from settings import LUNAR_TZ
 
+from modules.horoscope.handler import get_horoscope_reply
+
+
 
 
 async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str = "unknown"):
@@ -42,3 +45,9 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str
     # 2️⃣ Простые ответы
     actions = await get_simple_reply(text, user_id, chat_id)
     return actions
+
+    # 🔮 Гороскоп
+    actions = get_horoscope_reply(text, source, chat_id, user_id)
+    if actions:
+        return actions
+
