@@ -5,6 +5,10 @@ from modules.tarot_day.handler import get_tarot_day_reply
 from modules.angel_time.handler import get_angel_time_reply
 from settings import ANGEL_TIME_TZ
 
+from modules.lunar_day.handler import get_lunar_day_reply
+from settings import LUNAR_TZ
+
+
 
 async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str = "unknown"):
 
@@ -21,6 +25,11 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str
         user_id=user_id,
         tz_name=ANGEL_TIME_TZ,
     )
+    if actions:
+        return actions
+
+    #Лунный день
+    actions = get_lunar_day_reply(text, tz_name=LUNAR_TZ)
     if actions:
         return actions
 

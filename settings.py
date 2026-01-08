@@ -1,6 +1,7 @@
 import os
 
 ANGEL_TIME_TZ = os.getenv("ANGEL_TIME_TZ", "Europe/Moscow")
+LUNAR_TZ = os.getenv("LUNAR_TZ", "Europe/Moscow")
 
 
 VK_TOKEN = os.getenv("VK_TOKEN", "")
