@@ -165,8 +165,8 @@ def get_angel_time_reply(
     now = _now_dt(tz_name)
     now_str = now.strftime("%H:%M")
 
-    # 4) Если сейчас другое время (и не попали в +1 минуту)
-    if not _is_time_close(t, now, tolerance_minutes_after=1):
+    # 4) Если сейчас другое время (и не попали в +9 минуту)
+    if not _is_time_close(t, now, tolerance_minutes_after=9):
         reply = random.choice(OTHER_TIME_REPLIES).format(now=now_str)
         return [OutText(reply)]
 
