@@ -1,4 +1,6 @@
 import asyncio
+import random
+
 from core.actions import OutText
 from core.idle_notifier import get_known_chats, get_group_chats
 from settings import ADMIN_TG_IDS, ADMIN_VK_IDS
@@ -93,7 +95,6 @@ def handle_admin_command(platform: str, from_id: int, text: str):
 
     # если это команда, но пользователь не админ — шутливый отказ
     if t.startswith("/") and not _is_admin(platform, from_id):
-        import random
         return OutText(random.choice(NON_ADMIN_COMMAND_REPLIES))
 
     # только админ
@@ -124,7 +125,7 @@ def handle_admin_command(platform: str, from_id: int, text: str):
     if not msg:
         return OutText("❗ После команды должен быть текст")
 
-    # массовые рассылки
+    # ---------- массовые рассылки ----------
     if cmd == "/all":
         vk, tg = _send_to_targets(get_known_chats(), msg)
         return OutText(
@@ -147,38 +148,46 @@ def handle_admin_command(platform: str, from_id: int, text: str):
         vk, _ = _send_to_targets(get_known_chats("vk"), msg)
         return OutText(f"✅ Отправлено в VK чаты: {vk}")
 
-    # конкретные чаты
-    if cmd.startswith("/tg_"):
-        try:
-            chat_id = int(cmd[len("/tg_"):])
-        except ValueError:
-            return OutText("❗ Пример: /tg_-1001234567890 текст")
-        _send_to_targets([("tg", chat_id)], msg)
-        return OutText(f"✅ Отправлено в TG чат: {chat_id}")
-
-    if cmd.startswith("/vk_"):
-        try:
-            peer_id = int(cmd[len("/vk_"):])
-        except ValueError:
-            return OutText("❗ Пример: /vk_2000000001 текст")
-        _send_to_targets([("vk", peer_id)], msg)
-        return OutText(f"✅ Отправлено в VK чат: {peer_id}")
-
-    # пользователи
+    # ---------- пользователи (ВАЖНО: раньше чем /tg_ и /vk_) ----------
     if cmd.startswith("/tg_user_"):
+        id_str = cmd[len("/tg_user_"):]
         try:
-            user_id = int(cmd[len("/tg_user_"):])
+            user_id2 = int(id_str)
         except ValueError:
             return OutText("❗ Пример: /tg_user_123456789 текст")
-        _send_to_targets([("tg", user_id)], msg)
-        return OutText(f"✅ Отправлено пользователю TG: {user_id}")
+
+        _send_to_targets([("tg", user_id2)], msg)
+        return OutText(f"✅ Отправлено пользователю TG: {user_id2}")
 
     if cmd.startswith("/vk_user_"):
+        id_str = cmd[len("/vk_user_"):]
         try:
-            user_id = int(cmd[len("/vk_user_"):])
+            user_id2 = int(id_str)
         except ValueError:
             return OutText("❗ Пример: /vk_user_123456789 текст")
-        _send_to_targets([("vk", user_id)], msg)
-        return OutText(f"✅ Отправлено пользователю VK: {user_id}")
+
+        _send_to_targets([("vk", user_id2)], msg)
+        return OutText(f"✅ Отправлено пользователю VK: {user_id2}")
+
+    # ---------- конкретные чаты ----------
+    if cmd.startswith("/tg_"):
+        id_str = cmd[len("/tg_"):]
+        try:
+            chat_id2 = int(id_str)
+        except ValueError:
+            return OutText("❗ Пример: /tg_-1001234567890 текст")
+
+        _send_to_targets([("tg", chat_id2)], msg)
+        return OutText(f"✅ Отправлено в TG чат: {chat_id2}")
+
+    if cmd.startswith("/vk_"):
+        id_str = cmd[len("/vk_"):]
+        try:
+            peer_id2 = int(id_str)
+        except ValueError:
+            return OutText("❗ Пример: /vk_2000000001 текст")
+
+        _send_to_targets([("vk", peer_id2)], msg)
+        return OutText(f"✅ Отправлено в VK чат: {peer_id2}")
 
     return None
