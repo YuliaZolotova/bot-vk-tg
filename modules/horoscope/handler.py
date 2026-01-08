@@ -183,12 +183,12 @@ def get_horoscope_reply(text: str, platform: str, chat_id: int, user_id: int):
         _clear_waiting(platform, chat_id, user_id)
         date_str = _now_msk().strftime("%d.%m.%Y")
         horo = _get_horoscope_from_website(sign)
-        return [OutText(f"🔮 Гороскоп на сегодня ({date_str}) — {sign.capitalize()}\n\n{horo}")]
+        return [OutText(f"🔮 {horo}")]
 
     # 3) запрос вида "гороскоп деве"
     if has_horo_word and sign:
         date_str = _now_msk().strftime("%d.%m.%Y")
         horo = _get_horoscope_from_website(sign)
-        return [OutText(f"🔮 Гороскоп на сегодня ({date_str}) — {sign.capitalize()}\n\n{horo}")]
+        return [OutText(f"🔮 {horo}")]
 
     return None
