@@ -53,3 +53,71 @@ def load_chats() -> Dict[Tuple[str, int], float]:
             for platform, chat_id in cur.fetchall():
                 out[(platform, int(chat_id))] = 0.0
     return out
+
+# Статистика Ангельского времени
+def init_angel_time_stats() -> None:
+    """Таблица для статистики 'ангельского времени'."""
+    with psycopg2.connect(_dsn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS angel_time_stats (
+                    id SERIAL PRIMARY KEY,
+                    platform TEXT NOT NULL,
+                    chat_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    time_value TEXT NOT NULL,
+                    seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+        conn.commit()
+
+
+def log_angel_time(platform: str, chat_id: int, user_id: int, time_value: str) -> None:
+    """Записать, что пользователь увидел время."""
+    with psycopg2.connect(_dsn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO angel_time_stats (platform, chat_id, user_id, time_value)
+                VALUES (%s, %s, %s, %s);
+                """,
+                (platform, int(chat_id), int(user_id), time_value),
+            )
+        conn.commit()
+
+
+def get_user_angel_stats(platform: str, chat_id: int, user_id: int, limit: int = 5) -> tuple[int, list[tuple[str, int]]]:
+    """
+    Возвращает:
+      - total (сколько раз всего видел ангельское время в этом чате)
+      - top: список (time_value, count) топ-N
+    """
+    with psycopg2.connect(_dsn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM angel_time_stats
+                WHERE platform=%s AND chat_id=%s AND user_id=%s;
+                """,
+                (platform, int(chat_id), int(user_id)),
+            )
+            total = int(cur.fetchone()[0])
+
+            cur.execute(
+                """
+                SELECT time_value, COUNT(*) AS c
+                FROM angel_time_stats
+                WHERE platform=%s AND chat_id=%s AND user_id=%s
+                GROUP BY time_value
+                ORDER BY c DESC, time_value ASC
+                LIMIT %s;
+                """,
+                (platform, int(chat_id), int(user_id), int(limit)),
+            )
+            top = [(str(t), int(c)) for (t, c) in cur.fetchall()]
+
+    return total, top
+

@@ -1,5 +1,8 @@
 import os
 
+ANGEL_TIME_TZ = os.getenv("ANGEL_TIME_TZ", "Europe/Moscow")
+
+
 VK_TOKEN = os.getenv("VK_TOKEN", "")
 VK_SECRET = os.getenv("VK_SECRET", "")
 VK_CONFIRMATION = os.getenv("VK_CONFIRMATION", "")
