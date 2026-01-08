@@ -44,7 +44,7 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str
 
     # 2️⃣ Простые ответы
     actions = await get_simple_reply(text, user_id, chat_id)
-    return actions
+        return actions
 
     # 🔮 Гороскоп
     actions = get_horoscope_reply(text, source, chat_id, user_id)
