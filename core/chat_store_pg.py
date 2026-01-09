@@ -1,10 +1,20 @@
 import os
 from typing import Dict, Tuple
+from datetime import date
 
 import psycopg2
 
-from datetime import date
-import random
+
+def _dsn() -> str:
+    dsn = os.getenv("DATABASE_URL", "").strip()
+    if not dsn:
+        raise RuntimeError("DATABASE_URL is not set")
+    return dsn
+
+
+def _get_conn():
+    return psycopg2.connect(_dsn())
+
 
 def init_who_today_tables():
     conn = _get_conn()
