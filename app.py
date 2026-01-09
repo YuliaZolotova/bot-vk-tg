@@ -1,9 +1,13 @@
 from fastapi import FastAPI, Request, Response
+
 from core.engine import build_reply_actions
 from adapters.vk_sender import send_actions_vk
 from adapters.tg_sender import send_actions_tg
+
 from core.idle_notifier import touch, init_known_chats
 from settings import VK_CONFIRMATION, VK_SECRET, TG_WEBHOOK_SECRET
+
+from core.chat_store_pg import init_who_today_tables, touch_chat_user
 
 
 app = FastAPI()
@@ -13,6 +17,9 @@ app = FastAPI()
 async def startup_event():
     # Загружаем сохранённые чаты (Render Postgres), чтобы рассылка помнила их после деплоя
     await init_known_chats()
+
+    # Таблицы для модуля "Кто сегодня"
+    init_who_today_tables()
 
 
 @app.get("/")
@@ -51,8 +58,12 @@ async def vk_callback(req: Request):
         except (TypeError, ValueError):
             from_id = 0
 
-        # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
+        # запоминаем чат для рассылок
         touch("vk", peer_id)
+
+        # запоминаем пользователя в этом чате для "Кто сегодня"
+        if from_id > 0:
+            touch_chat_user("vk", peer_id, from_id, None)
 
         # важно: не допускаем vk:0
         if from_id <= 0:
@@ -65,7 +76,6 @@ async def vk_callback(req: Request):
     return Response("ok")
 
 
-
 @app.post("/tg/{secret}")
 async def tg_webhook(secret: str, req: Request):
     if TG_WEBHOOK_SECRET and secret != TG_WEBHOOK_SECRET:
@@ -76,13 +86,23 @@ async def tg_webhook(secret: str, req: Request):
     if not message:
         return {"ok": True}
 
-    chat_id = message["chat"]["id"]
+    chat_id = int(message["chat"]["id"])
 
-    # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
-    touch("tg", int(chat_id))
+    # запоминаем чат для рассылок
+    touch("tg", chat_id)
 
-    user_id = message["from"]["id"]
+    user_id = int(message["from"]["id"])
     text = message.get("text", "")
+
+    # имя для "Кто сегодня"
+    tg_name = (
+        (message["from"].get("first_name") or "") + " " + (message["from"].get("last_name") or "")
+    ).strip()
+    if not tg_name:
+        tg_name = message["from"].get("username")
+
+    # запоминаем пользователя в этом чате
+    touch_chat_user("tg", chat_id, user_id, tg_name)
 
     actions = await build_reply_actions(text, user_id, chat_id, source="tg")
     if actions:

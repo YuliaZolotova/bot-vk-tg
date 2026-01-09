@@ -10,6 +10,9 @@ from settings import LUNAR_TZ
 
 from modules.horoscope.handler import get_horoscope_reply
 
+from modules.who_today.handler import get_who_today_reply
+
+
 
 
 
@@ -46,6 +49,12 @@ async def build_reply_actions(text: str, user_id: int, chat_id: int, source: str
     actions = get_horoscope_reply(text, source, chat_id, user_id)
     if actions:
         return actions
+
+    # 🎭 Кто сегодня...
+    actions = get_who_today_reply(text, platform=source, chat_id=chat_id, user_id=user_id)
+    if actions:
+        return actions
+
 
     # 2️⃣ Простые ответы
     actions = await get_simple_reply(text, user_id, chat_id)

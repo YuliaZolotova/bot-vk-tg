@@ -3,7 +3,106 @@ from typing import Dict, Tuple
 
 import psycopg2
 
+from datetime import date
+import random
 
+def init_who_today_tables():
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS chat_users (
+                    platform TEXT NOT NULL,
+                    chat_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    display_name TEXT,
+                    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (platform, chat_id, user_id)
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS who_today_assignments (
+                    platform TEXT NOT NULL,
+                    chat_id BIGINT NOT NULL,
+                    day DATE NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    title TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (platform, chat_id, day, user_id)
+                );
+            """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def touch_chat_user(platform: str, chat_id: int, user_id: int, display_name: str | None = None):
+    """
+    Запоминаем, что пользователь писал в этом чате.
+    """
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO chat_users (platform, chat_id, user_id, display_name, last_seen)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (platform, chat_id, user_id)
+                DO UPDATE SET
+                    display_name = COALESCE(EXCLUDED.display_name, chat_users.display_name),
+                    last_seen = NOW();
+            """, (platform, int(chat_id), int(user_id), display_name))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_available_users_for_today(platform: str, chat_id: int, day: date, limit: int = 200) -> list[tuple[int, str | None]]:
+    """
+    Возвращает пользователей этого чата, которые ещё НЕ получали титул сегодня.
+    """
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT u.user_id, u.display_name
+                FROM chat_users u
+                WHERE u.platform = %s AND u.chat_id = %s
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM who_today_assignments a
+                      WHERE a.platform = u.platform
+                        AND a.chat_id = u.chat_id
+                        AND a.day = %s
+                        AND a.user_id = u.user_id
+                  )
+                ORDER BY u.last_seen DESC
+                LIMIT %s;
+            """, (platform, int(chat_id), day, int(limit)))
+            rows = cur.fetchall()
+            return [(int(r[0]), r[1]) for r in rows]
+    finally:
+        conn.close()
+
+
+def assign_title_today(platform: str, chat_id: int, day: date, user_id: int, title: str):
+    """
+    Фиксируем: этому пользователю в этом чате сегодня уже дали титул.
+    """
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO who_today_assignments (platform, chat_id, day, user_id, title)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING;
+            """, (platform, int(chat_id), day, int(user_id), title))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+
+#----------------1-----------------
 def _dsn() -> str:
     dsn = os.getenv("DATABASE_URL", "").strip()
     if not dsn:
