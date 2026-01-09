@@ -34,18 +34,36 @@ async def vk_callback(req: Request):
     if t == "message_new":
         msg = data.get("object", {}).get("message", {})
         text = msg.get("text", "")
+
         peer_id = msg.get("peer_id")
-        from_id = msg.get("from_id", 0)
+        if not peer_id:
+            return Response("ok")
+        peer_id = int(peer_id)
 
-        if peer_id:
-            # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
-            touch("vk", int(peer_id))
+        from_id_raw = (
+            msg.get("from_id")
+            or msg.get("user_id")
+            or msg.get("sender_id")
+            or 0
+        )
+        try:
+            from_id = int(from_id_raw)
+        except (TypeError, ValueError):
+            from_id = 0
 
-        actions = await build_reply_actions(text, int(from_id), int(peer_id), source="vk")
-        if peer_id and actions:
+        # Важно: запоминаем чат для рассылок (и сохраняем в Postgres)
+        touch("vk", peer_id)
+
+        # важно: не допускаем vk:0
+        if from_id <= 0:
+            return Response("ok")
+
+        actions = await build_reply_actions(text, from_id, peer_id, source="vk")
+        if actions:
             send_actions_vk(peer_id, actions)
 
     return Response("ok")
+
 
 
 @app.post("/tg/{secret}")
