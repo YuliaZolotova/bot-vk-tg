@@ -29,7 +29,7 @@ SIGN_SLUGS: dict[str, str] = {
     "скорпион": "skorpion",
     "стрелец": "strelec",
     "козерог": "kozerog",
-    "водолей": "vodoley",
+    "водолей": "vodolej",
     "рыбы": "ryby",
 }
 
