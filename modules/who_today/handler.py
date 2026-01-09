@@ -118,7 +118,7 @@ def get_who_today_reply(text: str, platform: str, chat_id: int, user_id: int):
     low = text.strip().lower()
 
     # ---------- статистика по титулу в этом чате ----------
-    if low in {"/who_stats", "кто сегодня статистика", "статистика кто сегодня"}:
+    if low in {"/who_stats", "кто сегодня статистика", "статистика кто сегодня", "статистика титулов"}:
         if not _is_group_chat(platform, chat_id):
             return [OutText("📊 Статистика доступна только в групповых чатах/беседах.")]
 
@@ -200,9 +200,17 @@ def get_who_today_reply(text: str, platform: str, chat_id: int, user_id: int):
     tpl = random.choice(phrases)
     msg = tpl.format(title=title, name=name)
 
+    # вторая строка — подпор
     tails = _read_lines("modules/who_today/tails.txt")
     if tails:
         msg = msg + "\n" + random.choice(tails)
 
+    # подсказка про статистику
+    msg = (
+            msg
+            + "\n\n📊 Хочешь статистику? Напиши: Статистика титулов или отправь команду /who_stats"
+    )
+
     return [OutText(msg)]
+
 
