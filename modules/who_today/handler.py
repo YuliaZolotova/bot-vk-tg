@@ -57,6 +57,8 @@ def _extract_title(text: str) -> str | None:
             tail = tail[len(junk):].strip()
             tail_low = tail.lower()
 
+
+
     # убираем "?" "!" "." и т.п. в конце
     tail = TRAIL_PUNCT_RE.sub("", tail).strip()
 
@@ -112,6 +114,28 @@ def _pg_funcs():
 def get_who_today_reply(text: str, platform: str, chat_id: int, user_id: int):
     if not text:
         return None
+
+    low = text.strip().lower()
+
+    # ---------- статистика по титулу в этом чате ----------
+    if low in {"/who_stats", "кто сегодня статистика", "статистика кто сегодня"}:
+        if not _is_group_chat(platform, chat_id):
+            return [OutText("📊 Статистика доступна только в групповых чатах/беседах.")]
+
+        try:
+            from core.chat_store_pg import get_who_today_title_stats
+            top = get_who_today_title_stats(platform, chat_id, limit=10)
+        except Exception:
+            return [OutText("📊 Не получилось получить статистику (ошибка базы).")]
+
+        if not top:
+            return [OutText("📊 Статистики пока нет — ещё никто не получал титулы 🙂")]
+
+        lines = ["📊 Топ титулов в этом чате (за всё время):", ""]
+        for title, cnt in top:
+            lines.append(f"• {title} — {cnt}")
+        return [OutText("\n".join(lines))]
+
 
     title = _extract_title(text)
     if title is None:
@@ -176,4 +200,9 @@ def get_who_today_reply(text: str, platform: str, chat_id: int, user_id: int):
     tpl = random.choice(phrases)
     msg = tpl.format(title=title, name=name)
 
+    tails = _read_lines("modules/who_today/tails.txt")
+    if tails:
+        msg = msg + "\n" + random.choice(tails)
+
     return [OutText(msg)]
+

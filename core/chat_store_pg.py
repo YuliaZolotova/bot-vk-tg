@@ -228,5 +228,48 @@ def get_user_angel_stats(platform: str, chat_id: int, user_id: int, limit: int =
             )
             top = [(str(t), int(c)) for (t, c) in cur.fetchall()]
 
+    def get_who_today_title_stats(platform: str, chat_id: int, limit: int = 10) -> list[tuple[str, int]]:
+        """
+        Топ титулов в этом чате за всё время.
+        Возвращает: [(title, count), ...]
+        """
+        conn = _get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                            SELECT title, COUNT(*) as c
+                            FROM who_today_assignments
+                            WHERE platform = %s
+                              AND chat_id = %s
+                            GROUP BY title
+                            ORDER BY c DESC, title ASC
+                                LIMIT %s;
+                            """, (platform, int(chat_id), int(limit)))
+                rows = cur.fetchall()
+                return [(str(t), int(c)) for (t, c) in rows]
+        finally:
+            conn.close()
+
+    def get_who_today_title_stats_today(platform: str, chat_id: int, day: date, limit: int = 10) -> list[
+        tuple[str, int]]:
+        """
+        Топ титулов в этом чате за конкретную дату (обычно сегодня).
+        """
+        conn = _get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                            SELECT title, COUNT(*) as c
+                            FROM who_today_assignments
+                            WHERE platform = %s AND chat_id = %s AND day = %s
+                            GROUP BY title
+                            ORDER BY c DESC, title ASC
+                                LIMIT %s;
+                            """, (platform, int(chat_id), day, int(limit)))
+                rows = cur.fetchall()
+                return [(str(t), int(c)) for (t, c) in rows]
+        finally:
+            conn.close()
+
     return total, top
 
