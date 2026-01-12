@@ -1,9 +1,11 @@
 import os
 from typing import Dict, Tuple
-from datetime import date
 
 import psycopg2
+from datetime import date
 
+
+# ---------------- базовое подключение ----------------
 
 def _dsn() -> str:
     dsn = os.getenv("DATABASE_URL", "").strip()
@@ -16,7 +18,14 @@ def _get_conn():
     return psycopg2.connect(_dsn())
 
 
+# ---------------- Кто сегодня (таблицы + операции) ----------------
+
 def init_who_today_tables():
+    """
+    Создаёт таблицы для модуля "Кто сегодня":
+    1) chat_users — пользователи, которые писали в этом чате
+    2) who_today_assignments — кому уже выдали титул в конкретный день
+    """
     conn = _get_conn()
     try:
         with conn.cursor() as cur:
@@ -111,14 +120,61 @@ def assign_title_today(platform: str, chat_id: int, day: date, user_id: int, tit
         conn.close()
 
 
+def get_who_today_title_stats(platform: str, chat_id: int, limit: int = 10) -> list[tuple[str, int]]:
+    """
+    Топ титулов в этом чате за всё время.
+    Возвращает: [(title, count), ...]
+    """
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT title, COUNT(*) as c
+                FROM who_today_assignments
+                WHERE platform = %s
+                  AND chat_id = %s
+                GROUP BY title
+                ORDER BY c DESC, title ASC
+                LIMIT %s;
+                """,
+                (platform, int(chat_id), int(limit)),
+            )
+            rows = cur.fetchall()
+            return [(str(t), int(c)) for (t, c) in rows]
+    finally:
+        conn.close()
 
-#----------------1-----------------
-def _dsn() -> str:
-    dsn = os.getenv("DATABASE_URL", "").strip()
-    if not dsn:
-        raise RuntimeError("DATABASE_URL is not set")
-    return dsn
 
+def get_who_today_title_stats_today(
+    platform: str, chat_id: int, day: date, limit: int = 10
+) -> list[tuple[str, int]]:
+    """
+    Топ титулов в этом чате за конкретную дату (обычно сегодня).
+    """
+    conn = _get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT title, COUNT(*) as c
+                FROM who_today_assignments
+                WHERE platform = %s
+                  AND chat_id = %s
+                  AND day = %s
+                GROUP BY title
+                ORDER BY c DESC, title ASC
+                LIMIT %s;
+                """,
+                (platform, int(chat_id), day, int(limit)),
+            )
+            rows = cur.fetchall()
+            return [(str(t), int(c)) for (t, c) in rows]
+    finally:
+        conn.close()
+
+
+# ---------------- known_chats (для админ-рассылки) ----------------
 
 def init_pg() -> None:
     """Создаём таблицу, если её ещё нет."""
@@ -163,7 +219,9 @@ def load_chats() -> Dict[Tuple[str, int], float]:
                 out[(platform, int(chat_id))] = 0.0
     return out
 
-# Статистика Ангельского времени
+
+# ---------------- Ангельское время (статистика) ----------------
+
 def init_angel_time_stats() -> None:
     """Таблица для статистики 'ангельского времени'."""
     with psycopg2.connect(_dsn()) as conn:
@@ -228,49 +286,4 @@ def get_user_angel_stats(platform: str, chat_id: int, user_id: int, limit: int =
             )
             top = [(str(t), int(c)) for (t, c) in cur.fetchall()]
 
-    def get_who_today_title_stats(platform: str, chat_id: int, limit: int = 10) -> list[tuple[str, int]]:
-        """
-        Топ титулов в этом чате за всё время.
-        Возвращает: [(title, count), ...]
-        """
-        conn = _get_conn()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("""
-                            SELECT title, COUNT(*) as c
-                            FROM who_today_assignments
-                            WHERE platform = %s
-                              AND chat_id = %s
-                            GROUP BY title
-                            ORDER BY c DESC, title ASC
-                                LIMIT %s;
-                            """, (platform, int(chat_id), int(limit)))
-                rows = cur.fetchall()
-                return [(str(t), int(c)) for (t, c) in rows]
-        finally:
-            conn.close()
-
-    def get_who_today_title_stats_today(platform: str, chat_id: int, day: date, limit: int = 10) -> list[
-        tuple[str, int]]:
-        """
-        Топ титулов в этом чате за конкретную дату (обычно сегодня).
-        """
-        conn = _get_conn()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("""
-                            SELECT title, COUNT(*) as c
-                            FROM who_today_assignments
-                            WHERE platform = %s AND chat_id = %s AND day = %s
-                            GROUP BY title
-                            ORDER BY c DESC, title ASC
-                                LIMIT %s;
-                            """, (platform, int(chat_id), day, int(limit)))
-                rows = cur.fetchall()
-                return [(str(t), int(c)) for (t, c) in rows]
-        finally:
-            conn.close()
-
     return total, top
-
-
