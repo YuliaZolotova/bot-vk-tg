@@ -287,3 +287,4 @@ def get_user_angel_stats(platform: str, chat_id: int, user_id: int, limit: int =
             top = [(str(t), int(c)) for (t, c) in cur.fetchall()]
 
     return total, top
+
