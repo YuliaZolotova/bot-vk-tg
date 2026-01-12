@@ -42,6 +42,8 @@ async def vk_callback(req: Request):
         msg = data.get("object", {}).get("message", {})
         text = msg.get("text", "")
 
+        conv_mid = msg.get("conversation_message_id") or msg.get("id") or 0
+
         peer_id = msg.get("peer_id")
         if not peer_id:
             return Response("ok")
@@ -72,7 +74,8 @@ async def vk_callback(req: Request):
         actions = await build_reply_actions(text, from_id, peer_id, source="vk")
         if actions:
             try:
-                send_actions_vk(peer_id, actions)
+                send_actions_vk(peer_id, actions, seed=int(conv_mid))
+
             except Exception:
                 # не даём webhook упасть -> VK не ретраит событие
                 pass
