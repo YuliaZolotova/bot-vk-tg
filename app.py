@@ -71,7 +71,11 @@ async def vk_callback(req: Request):
 
         actions = await build_reply_actions(text, from_id, peer_id, source="vk")
         if actions:
-            send_actions_vk(peer_id, actions)
+            try:
+                send_actions_vk(peer_id, actions)
+            except Exception:
+                # не даём webhook упасть -> VK не ретраит событие
+                pass
 
     return Response("ok")
 
