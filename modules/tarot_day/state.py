@@ -68,3 +68,20 @@ def set_today_card_for_user(user_id: int, source: str, card_filename: str) -> Ta
     raw[key] = {"date": state.date, "card": state.card}
     _save_raw(raw)
     return state
+
+
+def reset_today_card_for_user(user_id: int, source: str) -> bool:
+    """Сбрасывает запись о выданной карте дня для конкретного пользователя.
+
+    Это нужно для тестирования: после сброса этот же пользователь сможет снова
+    запросить "карту дня" сегодня.
+
+    Возвращает True, если запись была и мы её удалили. False, если удалять было нечего.
+    """
+    raw = _load_raw()
+    key = _user_key(user_id, source)
+    if key not in raw:
+        return False
+    raw.pop(key, None)
+    _save_raw(raw)
+    return True
